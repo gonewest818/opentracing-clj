@@ -1,5 +1,5 @@
-(ns opentracing.ring
-  (:require [opentracing.core :as ot]))
+(ns opentracing-clj.ring
+  (:require [opentracing-clj.core :as ot]))
 
 
 (defn wrap-opentracing
@@ -12,5 +12,5 @@
    (fn [request]
      ;;(log/debug (:headers request))
      (let [ctx (ot/http->context (:headers request))]
-       (apm/with-trace [s (apm/child-span ctx op-name tags)]
+       (ot/with-trace [s (ot/child-span ctx op-name tags)]
          (handler (assoc request :opentracing-context s)))))))

@@ -3,7 +3,7 @@
                                 MockTracer$Propagator]))
 
 (defn make-tracer
-  "generate a mock tracer with optional propagator (for now only MockTracer$PRINTER)"
+  "generate a mock tracer with optional propagator (for now only MockTracer$Propagator/PRINTER)"
   ([]
    (MockTracer.))
   ([propagator]
