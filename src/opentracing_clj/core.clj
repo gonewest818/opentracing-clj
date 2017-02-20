@@ -9,7 +9,7 @@
   [tracer ctx]
   (let [hm (java.util.HashMap.)
         tm (TextMapInjectAdapter. hm)]
-    (.inject tracer ctx Format$Builtin/TEXT_MAP tm)
+    (.inject tracer ctx Format$Builtin/HTTP_HEADERS tm)
     (into {} hm)))
 
 (defn span->http
@@ -23,7 +23,7 @@
   [tracer http-header]
   (let [hm (java.util.HashMap. http-header)
         tm (TextMapExtractAdapter. hm)]
-    (.extract tracer Format$Builtin/TEXT_MAP tm)))
+    (.extract tracer Format$Builtin/HTTP_HEADERS tm)))
 
 (defn add-tags
   "add tags to a span context"
