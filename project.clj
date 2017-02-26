@@ -7,6 +7,7 @@
                  [io.opentracing/opentracing-api "0.20.9"]
                  [io.opentracing/opentracing-noop "0.20.9"]
                  [io.opentracing/opentracing-mock "0.20.9"]]
-  :profiles {:dev {:dependencies [[midje "1.8.3"]]
+  :profiles {:dev {:source-paths ["dev"]
+                   :dependencies [[midje "1.8.3"]]
                    :plugins [[lein-midje "3.2.1"]
                              [lein-cloverage "1.0.9"]]}})
