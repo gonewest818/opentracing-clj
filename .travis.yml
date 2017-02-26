@@ -1,0 +1,6 @@
+language: clojure
+jdk:
+ - oraclejdk8
+script: lein midje
+after_script:
+  - bash -ex test/coveralls.sh
