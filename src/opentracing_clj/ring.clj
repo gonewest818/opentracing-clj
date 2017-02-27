@@ -11,6 +11,8 @@
   ([handler tracer op-name tags]
    (fn [request]
      ;;(log/debug (:headers request))
-     (let [ctx (ot/http->context tracer (:headers request))]
+     (if-let [ctx (ot/http->context tracer (:headers request))]
        (ot/with-trace [s (ot/child-span tracer ctx op-name tags)]
+         (handler (assoc request :opentracing-context s)))
+       (ot/with-trace [s (ot/span tracer op-name tags)]
          (handler (assoc request :opentracing-context s)))))))

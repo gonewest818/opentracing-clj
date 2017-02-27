@@ -38,7 +38,8 @@
   [span tags]
   (when-let [td tags]
     (doseq [[k v] td]
-      (.setTag span k v))))
+      (.setTag span k v)))
+  span)
 
 (defn context
   "create a new span context with the given name and optional tags"

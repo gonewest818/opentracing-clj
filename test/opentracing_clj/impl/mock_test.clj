@@ -8,8 +8,11 @@
   (make-tracer) => #(instance? io.opentracing.mock.MockTracer %))
 
 (fact "create mock tracer with propagator"
-  (make-tracer MockTracer$Propagator/PRINTER)
+  (make-tracer :text-map)
   => #(instance? io.opentracing.mock.MockTracer %)
 
-  (make-tracer MockTracer$Propagator/TEXT_MAP)
-  => #(instance? io.opentracing.mock.MockTracer %))
+  (make-tracer :printer)
+  => #(instance? io.opentracing.mock.MockTracer %)
+
+  (make-tracer :dummy-propagator-type)
+  => (throws Exception #"unknown or unsupported propagator"))
