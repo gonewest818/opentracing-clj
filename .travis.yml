@@ -2,5 +2,7 @@ language: clojure
 jdk:
  - oraclejdk8
 script: lein midje
+after_success:
+  - lein deploy clojars
 after_script:
   - bash -ex test/coveralls.sh
