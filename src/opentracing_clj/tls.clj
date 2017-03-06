@@ -21,7 +21,7 @@
 
 (defmacro thread-local
   [& body]
-  `(thread-local* (fn [] ~@body)))
+  `(#'opentracing-clj.tls/thread-local* (fn [] ~@body)))
 
 
 (def ^{:doc "Thread local state containing tracer and current span."} 
@@ -58,24 +58,18 @@
 ;;; These are simplified versions of the opentracing-clj.core functions
 ;;; since we are now tracking state on the caller's behalf
 
-(defn to-http
-  "Serialize the thread local context into http headers suitable
-  for inter-process calls"
-  []
-  (let [hm (java.util.HashMap.)
-        tm (TextMapInjectAdapter. hm)
-        tracer (:tracer @@context)
-        ctx (.context (:span @@context))]
-    (.inject tracer ctx Format$Builtin/HTTP_HEADERS tm)
-    (into {} hm)))
-
-(defn from-http!
-  "De-serialize http headers into the thread local span context"
-  [http-header]
-  (let [hm (java.util.HashMap. http-header)
-        tm (TextMapExtractAdapter. hm)
-        tracer (:tracer @@context)]
-    (push-span! (.extract tracer Format$Builtin/HTTP_HEADERS tm))))
+(defn span-context-from-parent
+  "Create a new span context with the given name and optional tags,
+  and make it a child of the supplied parent, but do not start the
+  span. Parent can be a span or a span context. Ordinarily you would
+  just call span! instead."
+  ([parent op-name]
+   (span-context-from-parent parent op-name nil))
+  ([parent op-name tags]
+   (-> (:tracer @@context)
+       (.buildSpan op-name)
+       (.asChildOf parent)
+       (add-tags tags))))
 
 (defn span-context
   "Create a new span context with the given name and optional tags,
@@ -84,12 +78,9 @@
   ([op-name]
    (span-context op-name nil))
   ([op-name tags]
-   (if-let [spn (:span @@context)]
+   (if-let [spn (peek-span)]
      ;; make it a child of the existing span
-     (-> (:tracer @@context)
-         (.buildSpan op-name)
-         (.asChildOf spn)
-         (add-tags tags))
+     (span-context-from-parent spn op-name tags)
      ;; or just make a new one
      (-> (:tracer @@context)
          (.buildSpan op-name)
@@ -130,13 +121,45 @@
      (.finish spn))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; propagation
+
+(defn to-http
+  "Serialize the thread local context into http headers suitable
+  for inter-process calls. If there is no current span then return
+  an empty hash-map."
+  []
+  (if-let [spn (peek-span)]
+    ;; if there is a current span, serialize it
+    (let [hm (java.util.HashMap.)
+          tm (TextMapInjectAdapter. hm)
+          tracer (:tracer @@context)
+          ctx (.context spn)]
+      (.inject tracer ctx Format$Builtin/HTTP_HEADERS tm)
+      (into {} hm))
+    ;; else return an empty hash-map
+    {}))
+
+(defn span-from-http!
+  "De-serialize http headers into the thread local span context"
+  ([http-header op-name]
+   (span-from-http! http-header op-name nil))
+  ([http-header op-name tags]
+   (let [hm (java.util.HashMap. http-header)
+         tm (TextMapExtractAdapter. hm)
+         tracer (:tracer @@context)]
+     (if-let [ctx (.extract tracer Format$Builtin/HTTP_HEADERS tm)]
+       (push-span! (.start (span-context-from-parent ctx op-name tags)))
+       (span! op-name tags)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; TLS versions of trace macro
 
 (defmacro trace
   "Trace execution of body"
-  [{:keys [op tags]} & body]
+  [{:keys [op-name tags]} & body]
   `(try
-     (#'opentracing-clj.tls/span! ~op ~tags)
+     (#'opentracing-clj.tls/span! ~op-name ~tags)
      (do ~@body)
      (finally (#'opentracing-clj.tls/finish-span!))))
 
