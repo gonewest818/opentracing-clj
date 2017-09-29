@@ -7,12 +7,11 @@
 
 (defn make-tracer
   "generate a mock tracer with optional propagator, currently limited to
-  :printer and :text-map
-  MockTracer$Propagator/PRINTER and MockTracer$Propagator/TEXT_MAP"
+  :printer (MockTracer$Propagator/PRINTER)
+  and :text-map (MockTracer$Propagator/TEXT_MAP)"
   ([]
    (MockTracer.))
   ([propagator]
-   (condp = propagator
-     :text-map (MockTracer. MockTracer$Propagator/TEXT_MAP)
-     :printer  (MockTracer. MockTracer$Propagator/PRINTER)
+   (if-let [p (get props propagator)]
+     (MockTracer. p)
      (throw (Exception. "unknown or unsupported propagator")))))

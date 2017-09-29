@@ -4,5 +4,5 @@
 
 
 (fact "create noop tracer"
-  (make-tracer) => #(instance? io.opentracing.NoopTracer %))
+  (make-tracer) => #(instance? io.opentracing.noop.NoopTracer %))
 
