@@ -1,89 +1,113 @@
 (ns opentracing-clj.core-test
-  (:require [midje.sweet :refer :all]
+  (:require [clojure.test :refer :all]
             [opentracing-clj.core :refer :all]
             [opentracing-clj.impl.mock :refer [make-tracer]]))
 
-(def tracer (atom nil))
 
-(background (before :checks (reset! tracer (make-tracer :text-map))))
+(def tracer (atom (make-tracer :text-map)))
 
+(use-fixtures :each
+  (fn [test]
+    (.reset @tracer)
+    (test)))
 
 (defn mock->hash-map
+  "convert mock span into a hashmap for simpler comparisons"
   [mock]
   {:name (.operationName mock)
    :parent-id (.parentId mock)
    :start (.startMicros mock)
    :finish (.finishMicros mock)
-   :tags (.tags mock)})
+   :tags (into {} (.tags mock))
+   :log-entries (map #(.fields %) (.logEntries mock))
+   :baggage (into {} (-> mock .context .baggageItems))})
 
-(facts "spans"
+(deftest interop-create-with-no-tags
+  (let [_ (with-open [s (-> @tracer
+                            (.buildSpan "foo")
+                            (add-tags nil)
+                            .startActive)])
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= {} (:tags (first spans))))))
 
-  (fact "creating spans"
-    (mock->hash-map (span @tracer "test"))
-    => (contains {:name "test" :parent-id 0})
+(deftest interop-create-with-one-tag
+  (let [_ (with-open [s (-> @tracer
+                            (.buildSpan "foo")
+                            (add-tags {"a" "1"})
+                            .startActive)])
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= {"a" "1"} (:tags (first spans))))))
 
-    (mock->hash-map (set-tags (span @tracer "test") {"abc" "123"}))
-    => (contains {:name "test" :parent-id 0 :tags {"abc" "123"}})
+(deftest interop-create-with-three-tags
+  (let [_ (with-open [s (-> @tracer
+                            (.buildSpan "foo")
+                            (add-tags {"a" "1" "b" "2" "c" "3"})
+                            .startActive)])
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= 3 (count (:tags (first spans)))))))
 
-    (mock->hash-map (span @tracer "test" {"abc" "123"}))
-    => (contains {:name "test" :parent-id 0 :tags {"abc" "123"}})
+(deftest scope-create
+  (let [sc (scope @tracer "foo" nil)
+        sp (.span sc)]
+    (is (= io.opentracing.mock.MockSpan (type sp)))
+    (is (= "foo" (.operationName sp)))))
 
-    (mock->hash-map (child-span @tracer
-                                (span @tracer "parent")
-                                "child"))
-    => (contains {:name "child" :parent-id anything})
+(deftest scope-create-with-one-tag
+  (let [sc (scope @tracer "foo" {"a" "1"})
+        sp (.span sc)]
+    (is (= io.opentracing.mock.MockSpan (type sp)))
+    (is (= {"a" "1"} (.tags sp)))
+    (is (= "foo" (.operationName sp)))))
 
-    (mock->hash-map (child-span @tracer
-                                (span @tracer "parent")
-                                "child"
-                                {"tag" "it"}))
-    => (contains {:name "child" :parent-id anything :tags {"tag" "it"}}))
-  
-  (fact "tracing spans"
-    (let [s (span @tracer "test")]
-      (finish-span s)
-      (map mock->hash-map (.finishedSpans @tracer)))
-    => (just (contains {:name "test" :parent-id 0}))
+(deftest scope-create-finishspan
+  (let [sc (scope @tracer "foo" nil false)
+        sp (.span sc)]
+    (is (= io.opentracing.mock.MockSpan (type sp)))
+    (is (= "foo" (.operationName sp)))))
 
-    ;; (let [s (span @tracer "test" {"xyz" "999" "abc" "111"})]
-    ;;   (finish-span s)
-    ;;   (map mock->hash-map (.finishedSpans @tracer)))
-    ;; => (just (contains {:name "test" :parent-id 0 :tags (contains {"xyz" "999"})}))
-    ;; **** why doesn't this work?
+(deftest scope-create-finishspan-with-one-tag
+  (let [sc (scope @tracer "foo" {"a" "1"} false)
+        sp (.span sc)]
+    (is (= io.opentracing.mock.MockSpan (type sp)))
+    (is (= {"a" "1"} (.tags sp)))
+    (is (= "foo" (.operationName sp)))))
 
-    (let [s (span @tracer "test" {"xyz" "999"})]
-      (finish-span s)
-      (map mock->hash-map (.finishedSpans @tracer)))
-    => (just (contains {:name "test" :parent-id 0 :tags {"xyz" "999"}}))))
+(deftest log-event-to-scope
+  (let [_ (with-open [s (scope @tracer "foo")]
+            (log-string s "and then this happened"))
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= 1 (count (:log-entries (first spans)))))
+    (is (= {"event" "and then this happened"}
+           (-> spans first :log-entries first)))))
 
+(deftest log-kv-to-scope
+  (let [_ (with-open [s (scope @tracer "bar")]
+            (log-kv s {"foo" 1 "bar" 2 "baz" false}))
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= 1 (count (:log-entries (first spans)))))
+    (is (= {"foo" 1 "bar" 2 "baz" false}
+           (-> spans first :log-entries first)))))
 
-(facts "contexts"
+(deftest log-kvs-to-scope
+  (let [_ (with-open [s (scope @tracer "bar")]
+            (log-kv s {"foo" 1 "bar" 2})
+            (log-kv s {"baz" false}))
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= 2 (count (:log-entries (first spans)))))
+    (is (= {"foo" 1 "bar" 2}
+           (-> spans first :log-entries first)))
+    (is (= {"baz" false}
+           (-> spans first :log-entries second)))))
 
-  (fact "creating contexts"
-    (start-span (context @tracer "ctx"))
-    => #(instance? io.opentracing.mock.MockSpan %))
-
-  (fact "creating child contexts"
-    (mock->hash-map
-     (start-span (child-context @tracer
-                                (span @tracer "parent")
-                                "child")))
-    => (contains {:name "child" :parent-id anything})
-
-    (mock->hash-map
-     (start-span (child-context @tracer
-                                (span @tracer "parent")
-                                "child"
-                                {"tag" "it"})))
-    => (contains {:name "child" :parent-id anything :tags {"tag" "it"}})))
-
-(facts "trace* macro"
-
-  (fact "generate a trace"
-    (do (trace* {:tracer @tracer :name "quux" :parent (span @tracer "parent")} nil)
-        (map mock->hash-map (.finishedSpans @tracer)))
-    => (just (contains {:name "quux"})) 
-
-    (do (trace* {:tracer @tracer :name "quux" :parent (span @tracer "parent") :tags {"awe" "struck"}})
-        (map mock->hash-map (.finishedSpans @tracer)))
-    => (just (contains {:name "quux" :tags {"awe" "struck"}}))))
+(deftest baggage-item
+  (let [_ (with-open [s (scope @tracer "bar")]
+            (add-baggage-item s "bag" "value"))
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= {"bag" "value"} (-> spans first :baggage)))))

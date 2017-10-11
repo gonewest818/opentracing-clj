@@ -1,6 +1,7 @@
 (ns opentracing-clj.impl.mock
-  (:import [io.opentracing.mock MockTracer
-                                MockTracer$Propagator]))
+  (:import (io.opentracing.mock MockTracer
+                                MockTracer$Propagator)
+           (io.opentracing.util ThreadLocalScopeManager)))
 
 (def props {:printer  MockTracer$Propagator/PRINTER
             :text-map MockTracer$Propagator/TEXT_MAP})
@@ -13,5 +14,5 @@
    (MockTracer.))
   ([propagator]
    (if-let [p (get props propagator)]
-     (MockTracer. p)
+     (MockTracer. (ThreadLocalScopeManager.) p)
      (throw (Exception. "unknown or unsupported propagator")))))
