@@ -18,7 +18,7 @@
   ([tracer op-name tags finish-span]
    (-> tracer
        (.buildSpan op-name)
-       (with-tags tags)
+       (add-tags tags)
        (.startActive finish-span))))
 
 (defn log-kv
