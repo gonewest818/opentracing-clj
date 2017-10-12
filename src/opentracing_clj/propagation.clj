@@ -45,11 +45,8 @@
        (with-open [s (-> tracer
                          (.buildSpan op-name)
                          (.asChildOf ctx)
-                         (ot/with-tags tags)
+                         (ot/add-tags tags)
                          (.startActive))]
          (handler (assoc request :opentracing-scope s)))
-       (with-open [s (-> tracer
-                         (.buildSpan op-name)
-                         (ot/with-tags tags)
-                         (.startActive))]
+       (with-open [s (ot/scope tracer op-name tags)]
          (handler (assoc request :opentracing-scope s)))))))

@@ -11,7 +11,4 @@
   :deploy-repositories [["clojars" {:url "https://clojars.org/repo"
                                     :username :env/clojars_username
                                     :password :env/clojars_password}]]
-  :profiles {:dev {:source-paths ["dev"]
-                   :dependencies [[midje "1.8.3"]]
-                   :plugins [[lein-midje "3.2.1"]
-                             [lein-cloverage "1.0.9"]]}})
+  :profiles {:dev {:plugins [[lein-cloverage "1.0.9"]]}})
