@@ -1,4 +1,4 @@
-(defproject org.clojars.gonewest818/opentracing-clj "0.2.0-SNAPSHOT"
+(defproject gonewest818/opentracing-clj "0.3.0-SNAPSHOT"
   :description "OpenTracing bindings for Clojure"
   :url "http://github.com/gonewest818/opentracing-clj"
   :license {:name "Eclipse Public License"
