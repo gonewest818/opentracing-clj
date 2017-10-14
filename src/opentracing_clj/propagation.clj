@@ -34,8 +34,13 @@
 
 (defn ring-wrapper
   "This ring middleware creates a span from the inbound request with
-  the given name and optional tags. The tracing scope is assoc'ed
-  into the request hash-map with key :opentracing-scope."
+  the given name and optional tags. If the tracer is able to extract a
+  valid context from the inbound request header, that context then
+  becomes the parent of the newly created span, else there is no
+  parent.  The enclosing scope is assoc'ed into the request hash-map
+  with key :opentracing-scope for downstream handlers to
+  retrieve. This is in addition to the behavior of the ScopeManager
+  associated with this tracer."
   ([handler tracer op-name]
    (ring-wrapper handler tracer op-name nil))
   ([handler tracer op-name tags]

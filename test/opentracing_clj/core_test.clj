@@ -84,6 +84,15 @@
     (is (= {"event" "and then this happened"}
            (-> spans first :log-entries first)))))
 
+(deftest log-event-with-ts-to-scope
+  (let [_ (with-open [s (scope @tracer "foo")]
+            (log-string s "and then this happened" 100))
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= 1 (count (:log-entries (first spans)))))
+    (is (= {"event" "and then this happened"}
+           (-> spans first :log-entries first)))))
+
 (deftest log-kv-to-scope
   (let [_ (with-open [s (scope @tracer "bar")]
             (log-kv s {"foo" 1 "bar" 2 "baz" false}))
@@ -97,6 +106,18 @@
   (let [_ (with-open [s (scope @tracer "bar")]
             (log-kv s {"foo" 1 "bar" 2})
             (log-kv s {"baz" false}))
+        spans (map mock->hash-map (.finishedSpans @tracer))]
+    (is (= 1 (count spans)))
+    (is (= 2 (count (:log-entries (first spans)))))
+    (is (= {"foo" 1 "bar" 2}
+           (-> spans first :log-entries first)))
+    (is (= {"baz" false}
+           (-> spans first :log-entries second)))))
+
+(deftest log-kvs-with-ts-to-scope
+  (let [_ (with-open [s (scope @tracer "bar")]
+            (log-kv s {"foo" 1 "bar" 2} 200)
+            (log-kv s {"baz" false} 300))
         spans (map mock->hash-map (.finishedSpans @tracer))]
     (is (= 1 (count spans)))
     (is (= 2 (count (:log-entries (first spans)))))

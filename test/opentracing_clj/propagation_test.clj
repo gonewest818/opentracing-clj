@@ -32,3 +32,13 @@
   (let [c (extract @tracer {"traceid" "1" "spanid" "2"} :text)]
     (is (= 1 (.traceId c)))
     (is (= 2 (.spanId c)))))
+
+(deftest ring
+  (let [wrap (ring-wrapper (fn [h] {:status 200}) @tracer "foo")
+        req {:headers {}
+             :server-port 80
+             :server-name "localhost"
+             :uri "/foo"
+             :scheme "http"
+             :request-method :get}]
+    (is (= (wrap req) {:status 200}))))
