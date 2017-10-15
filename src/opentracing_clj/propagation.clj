@@ -11,10 +11,11 @@
               })
 
 (defn inject
-  "Serialize a tracing context and inject into a hashmap for inter-process calls,
-  where 'fmt' is one of :http or :text, corresponding to the HTTP_HEADERS and
-  TEXT_MAP builtins in the opentracing-java implementation. Does not support a
-  BINARY carrier. Returns a Clojure hash-map containing the injected data."
+  "Serialize a tracing context and inject into a hashmap for
+  inter-process calls, where 'fmt' is one of :http or :text,
+  corresponding to the HTTP_HEADERS and TEXT_MAP builtins in the
+  opentracing-java implementation. Does not support a BINARY
+  carrier. Returns a Clojure hash-map containing the injected data."
   [tracer ctx fmt]
   (let [hm (java.util.HashMap.)
         tm (TextMapInjectAdapter. hm)]

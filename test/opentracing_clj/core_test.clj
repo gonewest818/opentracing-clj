@@ -7,9 +7,9 @@
 (def tracer (atom (make-tracer :text-map)))
 
 (use-fixtures :each
-  (fn [test]
+  (fn [t]
     (.reset @tracer)
-    (test)))
+    (t)))
 
 (defn mock->hash-map
   "convert mock span into a hashmap for simpler comparisons"

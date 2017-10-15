@@ -7,9 +7,9 @@
 (def tracer (atom (make-tracer :text-map)))
 
 (use-fixtures :each
-  (fn [test]
+  (fn [t]
     (.reset @tracer)
-    (test)))
+    (t)))
 
 (deftest inject-http
   (let [s (scope @tracer "foo" {"a" "1"})
