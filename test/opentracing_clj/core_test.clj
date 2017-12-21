@@ -26,7 +26,7 @@
   (let [_ (with-open [s (-> @tracer
                             (.buildSpan "foo")
                             (add-tags nil)
-                            .startActive)])
+                            (.startActive true))])
         spans (map mock->hash-map (.finishedSpans @tracer))]
     (is (= 1 (count spans)))
     (is (= {} (:tags (first spans))))))
@@ -35,7 +35,7 @@
   (let [_ (with-open [s (-> @tracer
                             (.buildSpan "foo")
                             (add-tags {"a" "1"})
-                            .startActive)])
+                            (.startActive true))])
         spans (map mock->hash-map (.finishedSpans @tracer))]
     (is (= 1 (count spans)))
     (is (= {"a" "1"} (:tags (first spans))))))
@@ -44,7 +44,7 @@
   (let [_ (with-open [s (-> @tracer
                             (.buildSpan "foo")
                             (add-tags {"a" "1" "b" "2" "c" "3"})
-                            .startActive)])
+                            (.startActive true))])
         spans (map mock->hash-map (.finishedSpans @tracer))]
     (is (= 1 (count spans)))
     (is (= 3 (count (:tags (first spans)))))))
